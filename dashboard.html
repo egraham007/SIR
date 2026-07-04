@@ -362,7 +362,7 @@ function handleCSVFile(file) {
     pendingCSVData = rows;
     const preview = document.getElementById('csv-preview');
     preview.textContent = rows.slice(0, 8).map(r =>
-      `#${r.rank}  ${r.name.padEnd(28)} ${r.time}s`
+      `#${r.rank}  ${r.name.padEnd(28)} ${(r.school || '').padEnd(20)} ${r.time}s`
     ).join('\n') + (rows.length > 8 ? `\n... and ${rows.length - 8} more` : '');
     preview.classList.add('show');
     document.getElementById('commit-btn').disabled = false;
@@ -374,25 +374,72 @@ function handleCSVFile(file) {
   reader.readAsText(file);
 }
 
+function splitCSVLine(line) {
+  const cols = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || line.split(',');
+  return cols.map(c => c.replace(/^"|"$/g, '').trim());
+}
+
+// Maps a header cell to a known field name, or null if it's not one we use
+// (e.g. "Conference"/"Event" — those come from the admin's form fields instead,
+// since the CSV alone doesn't carry gender).
+function matchHeader(h) {
+  const s = h.trim().toLowerCase();
+  if (s === 'rank') return 'rank';
+  if (['name', 'athlete', 'swimmer'].includes(s)) return 'name';
+  if (['school', 'team'].includes(s)) return 'school';
+  if (s === 'meet') return 'meet';
+  if (s === 'time') return 'time';
+  return null;
+}
+
 function parseCSV(text) {
   const lines = text.trim().split('\n');
-  const rows  = [];
-  for (const line of lines) {
+  if (!lines.length) return [];
+
+  // If the first row's first cell isn't a number, treat it as a header and
+  // map columns by name instead of assuming a fixed position — this lets us
+  // pull out "school" (Team) even when there are extra columns like
+  // Conference/Event that we don't otherwise use.
+  const firstCols = splitCSVLine(lines[0]);
+  const hasHeader = isNaN(parseInt(firstCols[0]));
+  let colIndex = null;
+  let dataLines = lines;
+
+  if (hasHeader) {
+    colIndex = {};
+    firstCols.forEach((h, i) => {
+      const field = matchHeader(h);
+      if (field) colIndex[field] = i;
+    });
+    dataLines = lines.slice(1);
+  }
+
+  const rows = [];
+  for (const line of dataLines) {
     if (!line.trim()) continue;
-    // Handle quoted fields
-    const cols = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || line.split(',');
-    const clean = cols.map(c => c.replace(/^"|"$/g,'').trim());
-    const rankRaw = clean[0];
-    const rank = parseInt(rankRaw);
-    if (isNaN(rank)) continue;
-    // col layout: rank, name, ...(any extra columns)..., time
-    // Time is always the last column so extra descriptive columns
-    // (team, conference, event, etc.) don't shift its position.
-    if (clean.length < 3) continue;
-    const name = clean[1];
-    const time = parseFloat(clean[clean.length - 1]);
-    if (isNaN(time)) continue;
-    rows.push({ rank, name, time });
+    const clean = splitCSVLine(line);
+
+    let rank, name, school, meet, time;
+    if (colIndex) {
+      rank   = parseInt(clean[colIndex.rank]);
+      name   = colIndex.name   != null ? clean[colIndex.name]   : '';
+      school = colIndex.school != null ? clean[colIndex.school] : '';
+      meet   = colIndex.meet   != null ? clean[colIndex.meet]   : '';
+      time   = parseFloat(clean[colIndex.time]);
+    } else {
+      // No header — fall back to positional rules: rank, name, [school],
+      // [meet], time. Time is always the last column so extra descriptive
+      // columns don't shift its position.
+      rank = parseInt(clean[0]);
+      if (clean.length < 3) continue;
+      name   = clean[1];
+      school = clean.length >= 4 ? clean[2] : '';
+      meet   = clean.length >= 5 ? clean[3] : '';
+      time   = parseFloat(clean[clean.length - 1]);
+    }
+
+    if (isNaN(rank) || !name || isNaN(time) || time <= 0) continue;
+    rows.push({ rank, name, school: school || '', meet: meet || '', time });
   }
   return rows;
 }
@@ -407,9 +454,10 @@ async function commitCSVImport() {
 
   const res = document.getElementById('import-result');
 
-  // Rebuild a plain CSV from parsed rows so we can POST it
+  // Rebuild a clean 5-column CSV from parsed rows so we can POST it
+  const q = s => `"${String(s || '').replace(/"/g, '""')}"`;
   const csvText = 'rank,name,school,meet,time\n' +
-    pendingCSVData.map(r => `${r.rank},${r.name},,,${r.time}`).join('\n');
+    pendingCSVData.map(r => `${r.rank},${q(r.name)},${q(r.school)},${q(r.meet)},${r.time}`).join('\n');
   const file = new File([csvText], 'import.csv', { type: 'text/csv' });
 
   try {
@@ -462,10 +510,28 @@ async function loadRankedLists() {
           <td>${l.gender}</td>
           <td>${l.season}</td>
           <td>${l.swim_count}</td>
-          <td><button class="btn-small" onclick="viewSwims('${l.list_key}')">View</button></td>
+          <td style="display:flex;gap:6px">
+            <button class="btn-small" onclick="viewSwims('${l.list_key}')">View</button>
+            <button class="btn-small danger" onclick="deleteRankedList('${l.list_key}')">Delete</button>
+          </td>
         </tr>`).join('')}</tbody></table>`;
   } catch (err) {
     wrap.innerHTML = `<div style="color:var(--red);font-size:13px">Could not load lists: ${err.message}</div>`;
+  }
+}
+
+async function deleteRankedList(listKey) {
+  const label = listKey.split('|').join(' · ');
+  if (!confirm(`Delete ${label}? This permanently removes all its swims and cannot be undone.`)) return;
+  try {
+    await SPI_API.deleteList(listKey);
+    const title = document.getElementById('swims-viewer-title');
+    if (title.textContent === label) {
+      document.getElementById('swims-viewer').style.display = 'none';
+    }
+    loadRankedLists();
+  } catch (err) {
+    alert(`Could not delete list: ${err.message}`);
   }
 }
 

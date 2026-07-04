@@ -404,6 +404,18 @@ def get_list_swims(list_key):
     return jsonify({'list': dict(meta), 'swims': [dict(s) for s in swims]})
 
 
+@app.delete('/api/lists/<path:list_key>')
+@require_admin
+def delete_list(list_key):
+    """Delete a ranked list and all its swims (admin only)."""
+    db  = get_db()
+    cur = db.execute("DELETE FROM ranked_lists WHERE list_key=%s", (list_key,))
+    db.commit()
+    if cur.rowcount == 0:
+        return jsonify({'error': 'List not found'}), 404
+    return jsonify({'ok': True, 'list_key': list_key})
+
+
 # ── Benchmarks (public) ────────────────────────────────────────────────────────
 def percentile(sorted_times: list[float], pct: float) -> float:
     """Linear interpolation percentile on sorted ascending data."""

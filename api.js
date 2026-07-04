@@ -84,6 +84,10 @@ const SPI_API = (() => {
     return req('GET', `/api/lists/${encodeURIComponent(listKey)}/swims`);
   }
 
+  async function deleteList(listKey) {
+    return req('DELETE', `/api/lists/${encodeURIComponent(listKey)}`);
+  }
+
   // ── Benchmarks ───────────────────────────────────────────────
   async function getBenchmarks() {
     return req('GET', '/api/benchmarks');
@@ -121,7 +125,7 @@ const SPI_API = (() => {
   // ── Public API ─────────────────────────────────────────────────
   return {
     signup, login, logout, me,
-    score, getLists, getListSwims, getBenchmarks,
+    score, getLists, getListSwims, getBenchmarks, deleteList,
     importCSV, importLog,
     getUsers, updateUser,
     health,
