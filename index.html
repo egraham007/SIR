@@ -2158,11 +2158,8 @@ async function handleSignUp() {
 }
 
 function signInAs(user) {
-  SPI_AUTH = user;
   localStorage.setItem('spi_auth', JSON.stringify(user));
-  closeAuthModal();
-  updateNavAuth();
-  if (user.role === 'admin') showAdminPanel();
+  window.location.href = 'dashboard.html';
 }
 
 async function signOut() {

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — SPI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --navy:    #050D1A;
+  --steel:   #111E33;
+  --slate:   #7A95B5;
+  --white:   #EEF3FF;
+  --cyan:    #00D4FF;
+  --amber:   #FFAA00;
+  --green:   #1DFFA0;
+  --radius:  8px;
+  --radius-lg: 14px;
+}
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--navy);
+  color: var(--white);
+  min-height: 100vh;
+}
+nav {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 3rem; height: 62px;
+  background: rgba(5,13,26,0.8);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0,212,255,0.1);
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  font-family: 'Syne', sans-serif; font-weight: 800;
+  font-size: 18px; color: var(--white); text-decoration: none;
+}
+.nav-logo-badge {
+  background: var(--cyan); color: var(--navy);
+  font-size: 11px; font-weight: 800; padding: 2px 8px;
+  border-radius: 4px; letter-spacing: 0.08em;
+  font-family: 'Syne', sans-serif;
+}
+.nav-user { display: flex; align-items: center; gap: 10px; }
+.nav-user-badge {
+  font-size: 12px; font-weight: 600; color: var(--slate);
+  font-family: 'Space Grotesk', sans-serif;
+}
+.role-tag {
+  font-size: 10px; font-weight: 700; padding: 2px 8px;
+  border-radius: 4px; font-family: 'Space Grotesk', sans-serif;
+  letter-spacing: 0.05em; text-transform: uppercase;
+}
+.role-tag-swimmer { background: rgba(34,214,122,0.15); color: var(--green); }
+.role-tag-coach   { background: rgba(245,166,35,0.15); color: var(--amber); }
+.role-tag-admin   { background: rgba(0,201,255,0.15); color: var(--cyan); }
+.btn-signout {
+  background: none; border: 1px solid rgba(240,244,255,0.15);
+  color: var(--slate); font-size: 12px; font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600; padding: 5px 12px; border-radius: var(--radius);
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-signout:hover { border-color: rgba(240,244,255,0.4); color: var(--white); }
+
+main {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: calc(100vh - 62px);
+  padding: 2rem; text-align: center;
+}
+.role-eyebrow {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px; font-weight: 700; color: var(--cyan);
+  letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 1rem;
+}
+.role-heading {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(48px, 10vw, 96px); font-weight: 800;
+  letter-spacing: -0.03em; margin-bottom: 1rem;
+}
+.role-sub {
+  color: var(--slate); font-size: 16px; max-width: 480px;
+}
+.home-link {
+  margin-top: 2rem; color: var(--slate); font-size: 14px;
+  text-decoration: none; border-bottom: 1px solid transparent;
+}
+.home-link:hover { color: var(--cyan); border-color: var(--cyan); }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="index.html">
+    <span class="nav-logo-badge">SPI</span>
+    Swim Performance Index
+  </a>
+  <div class="nav-user" id="nav-user"></div>
+</nav>
+
+<main>
+  <div class="role-eyebrow">Dashboard</div>
+  <h1 class="role-heading" id="role-heading">—</h1>
+  <p class="role-sub" id="role-sub"></p>
+  <a class="home-link" href="index.html">← Back to home</a>
+</main>
+
+<script>window.SPI_API_BASE = 'https://sir-api.onrender.com';</script>
+<script src="api.js"></script>
+<script>
+const ROLE_META = {
+  swimmer: { label: 'Swimmer', tag: 'role-tag-swimmer' },
+  coach:   { label: 'Coach',   tag: 'role-tag-coach' },
+  admin:   { label: 'Admin',   tag: 'role-tag-admin' },
+};
+
+async function signOut() {
+  await SPI_API.logout();
+  localStorage.removeItem('spi_auth');
+  window.location.href = 'index.html';
+}
+
+function renderUser(user) {
+  const m = ROLE_META[user.role] || { label: user.role, tag: 'role-tag-swimmer' };
+  document.getElementById('nav-user').innerHTML = `
+    <span class="nav-user-badge">${user.name}</span>
+    <span class="role-tag ${m.tag}">${m.label}</span>
+    <button class="btn-signout" onclick="signOut()">Sign out</button>
+  `;
+  document.getElementById('role-heading').textContent = m.label;
+  document.getElementById('role-sub').textContent =
+    `Signed in as ${user.name} (${user.email}). This is the starting point for the ${m.label.toLowerCase()} dashboard.`;
+}
+
+window.addEventListener('load', async function() {
+  if (!SPI_API.isLoggedIn()) {
+    window.location.href = 'index.html';
+    return;
+  }
+  try {
+    const user = await SPI_API.me();
+    if (!user) {
+      window.location.href = 'index.html';
+      return;
+    }
+    localStorage.setItem('spi_auth', JSON.stringify(user));
+    renderUser(user);
+  } catch (err) {
+    window.location.href = 'index.html';
+  }
+});
+</script>
+</body>
+</html>
