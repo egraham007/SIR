@@ -12,11 +12,13 @@
 :root {
   --navy:    #050D1A;
   --steel:   #111E33;
+  --mid:     #1E3556;
   --slate:   #7A95B5;
   --white:   #EEF3FF;
   --cyan:    #00D4FF;
   --amber:   #FFAA00;
   --green:   #1DFFA0;
+  --red:     #FF4F4F;
   --radius:  8px;
   --radius-lg: 14px;
 }
@@ -27,6 +29,7 @@ body {
   min-height: 100vh;
 }
 nav {
+  position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 3rem; height: 62px;
   background: rgba(5,13,26,0.8);
@@ -65,11 +68,8 @@ nav {
 }
 .btn-signout:hover { border-color: rgba(240,244,255,0.4); color: var(--white); }
 
-main {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  min-height: calc(100vh - 62px);
-  padding: 2rem; text-align: center;
-}
+main { padding: 3rem 2rem 4rem; max-width: 1100px; margin: 0 auto; }
+.role-header { text-align: center; margin-bottom: 1rem; }
 .role-eyebrow {
   font-family: 'Space Grotesk', sans-serif;
   font-size: 12px; font-weight: 700; color: var(--cyan);
@@ -77,17 +77,103 @@ main {
 }
 .role-heading {
   font-family: 'Syne', sans-serif;
-  font-size: clamp(48px, 10vw, 96px); font-weight: 800;
+  font-size: clamp(40px, 8vw, 72px); font-weight: 800;
   letter-spacing: -0.03em; margin-bottom: 1rem;
 }
-.role-sub {
-  color: var(--slate); font-size: 16px; max-width: 480px;
-}
+.role-sub { color: var(--slate); font-size: 16px; max-width: 480px; margin: 0 auto; }
 .home-link {
-  margin-top: 2rem; color: var(--slate); font-size: 14px;
+  display: block; margin: 2rem auto 0; width: fit-content;
+  color: var(--slate); font-size: 14px;
   text-decoration: none; border-bottom: 1px solid transparent;
 }
 .home-link:hover { color: var(--cyan); border-color: var(--cyan); }
+
+/* ── Admin tools ─────────────────────────────────────────────── */
+.admin-tools { margin-top: 2.5rem; text-align: left; }
+.admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.admin-card {
+  background: var(--steel); border: 1px solid rgba(0,201,255,0.12);
+  border-radius: var(--radius-lg); padding: 1.5rem;
+}
+.admin-card h3 {
+  font-family: 'Space Grotesk', sans-serif; font-size: 15px; font-weight: 700;
+  margin-bottom: 0.35rem; display: flex; align-items: center; gap: 8px;
+}
+.admin-card .card-desc { font-size: 13px; color: var(--slate); margin-bottom: 1.25rem; }
+.admin-full { grid-column: 1 / -1; }
+
+.field { margin-bottom: 1rem; }
+.field label {
+  display: block; font-size: 12px; font-weight: 600; color: var(--slate);
+  font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.04em;
+  text-transform: uppercase; margin-bottom: 5px;
+}
+.field input, .field select {
+  width: 100%; background: var(--mid); border: 1px solid rgba(240,244,255,0.1);
+  border-radius: var(--radius); color: var(--white); font-size: 14px;
+  padding: 9px 12px; font-family: 'Inter', sans-serif;
+}
+.field select option { background: var(--steel); }
+
+.calc-btn {
+  width: 100%; margin-top: 0.5rem;
+  background: var(--cyan); color: var(--navy);
+  font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+  font-size: 14px; padding: 12px; border-radius: var(--radius);
+  border: none; cursor: pointer; transition: opacity 0.2s;
+}
+.calc-btn:hover { opacity: 0.85; }
+.calc-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.drop-zone {
+  border: 2px dashed rgba(0,201,255,0.25);
+  border-radius: var(--radius); padding: 2rem 1rem;
+  text-align: center; cursor: pointer; transition: all 0.2s;
+  background: rgba(10,22,40,0.4);
+}
+.drop-zone:hover, .drop-zone.dragover { border-color: var(--cyan); background: rgba(0,201,255,0.06); }
+.drop-zone-icon { font-size: 28px; margin-bottom: 8px; }
+.drop-zone-text { font-size: 13px; color: var(--slate); }
+.drop-zone-text strong { color: var(--white); }
+#csv-file-input { display: none; }
+
+.import-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 1rem 0; }
+.csv-preview {
+  margin-top: 1rem; background: rgba(10,22,40,0.6);
+  border: 1px solid rgba(240,244,255,0.08);
+  border-radius: var(--radius); padding: 1rem;
+  max-height: 160px; overflow-y: auto;
+  font-size: 12px; font-family: monospace; color: var(--slate);
+  display: none;
+}
+.csv-preview.show { display: block; }
+.import-result {
+  margin-top: 0.75rem; padding: 10px 14px;
+  border-radius: var(--radius); font-size: 13px; display: none;
+}
+.import-result.success { display: block; background: rgba(34,214,122,0.1); border: 1px solid rgba(34,214,122,0.3); color: var(--green); }
+.import-result.error   { display: block; background: rgba(255,92,92,0.1); border: 1px solid rgba(255,92,92,0.3); color: var(--red); }
+
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th {
+  font-family: 'Space Grotesk', sans-serif; font-size: 10px; font-weight: 700;
+  color: var(--slate); letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 6px 10px; border-bottom: 1px solid rgba(240,244,255,0.1); text-align: left;
+}
+.data-table td { padding: 8px 10px; border-bottom: 1px solid rgba(240,244,255,0.05); }
+.data-table tr:last-child td { border-bottom: none; }
+
+.btn-small {
+  font-size: 11px; padding: 3px 10px; border-radius: 4px; cursor: pointer;
+  background: rgba(0,201,255,0.1); border: 1px solid rgba(0,201,255,0.2); color: var(--cyan);
+}
+.btn-small.danger  { background: rgba(255,92,92,0.1);  border-color: rgba(255,92,92,0.2);  color: var(--red); }
+.btn-small.success { background: rgba(34,214,122,0.1); border-color: rgba(34,214,122,0.2); color: var(--green); }
+
+@media (max-width: 900px) {
+  .admin-grid { grid-template-columns: 1fr; }
+  .import-meta { grid-template-columns: 1fr; }
+}
 </style>
 </head>
 <body>
@@ -101,9 +187,106 @@ main {
 </nav>
 
 <main>
-  <div class="role-eyebrow">Dashboard</div>
-  <h1 class="role-heading" id="role-heading">—</h1>
-  <p class="role-sub" id="role-sub"></p>
+  <div class="role-header">
+    <div class="role-eyebrow">Dashboard</div>
+    <h1 class="role-heading" id="role-heading">—</h1>
+    <p class="role-sub" id="role-sub"></p>
+  </div>
+
+  <!-- Admin-only tools, shown after role is confirmed -->
+  <div class="admin-tools" id="admin-tools" style="display:none">
+    <div class="admin-grid">
+
+      <!-- CSV Import -->
+      <div class="admin-card">
+        <h3>📥 Import CSV Data</h3>
+        <div class="card-desc">
+          Upload a ranked swim list (rank, name, school, meet, time) for one
+          conference/event/gender/season. Re-importing the same combination
+          replaces it.
+        </div>
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('csv-file-input').click()">
+          <div class="drop-zone-icon">📄</div>
+          <div class="drop-zone-text"><strong>Click to upload</strong> or drag &amp; drop a CSV</div>
+          <div class="drop-zone-text" style="margin-top:4px;font-size:11px">rank, name, school, meet, time</div>
+        </div>
+        <input type="file" id="csv-file-input" accept=".csv" onchange="handleCSVFile(this.files[0])">
+        <div class="import-meta">
+          <div class="field" style="margin:0">
+            <label>Event</label>
+            <select id="import-event">
+              <option value="50free">50 Free</option>
+              <option value="100free">100 Free</option>
+              <option value="200free">200 Free</option>
+              <option value="500free">500 Free</option>
+              <option value="1000free">1000 Free</option>
+              <option value="1650free">1650 Free</option>
+              <option value="100back">100 Back</option>
+              <option value="200back">200 Back</option>
+              <option value="100breast">100 Breast</option>
+              <option value="200breast">200 Breast</option>
+              <option value="100fly">100 Fly</option>
+              <option value="200fly">200 Fly</option>
+              <option value="200im">200 IM</option>
+              <option value="400im">400 IM</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Gender</label>
+            <select id="import-gender">
+              <option value="M">Men</option>
+              <option value="F">Women</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Conference</label>
+            <input type="text" id="import-conf" placeholder="e.g. SEC" />
+          </div>
+          <div class="field" style="margin:0">
+            <label>Season</label>
+            <input type="text" id="import-season" placeholder="e.g. 2025-26" value="2025-26" />
+          </div>
+        </div>
+        <div class="csv-preview" id="csv-preview"></div>
+        <button class="calc-btn" onclick="commitCSVImport()" style="margin-top:0.75rem" id="commit-btn" disabled>
+          Import to database
+        </button>
+        <div class="import-result" id="import-result"></div>
+      </div>
+
+      <!-- Ranked lists viewer -->
+      <div class="admin-card">
+        <h3>🗄️ Ranked Lists</h3>
+        <div class="card-desc">Everything currently stored in the database. Click a list to view its swims.</div>
+        <div id="lists-table-wrap" style="max-height:420px;overflow-y:auto"></div>
+      </div>
+
+      <!-- Swims drill-down -->
+      <div class="admin-card admin-full" id="swims-viewer" style="display:none">
+        <h3>🏊 Swims — <span id="swims-viewer-title"></span></h3>
+        <div style="overflow-x:auto;max-height:400px;overflow-y:auto">
+          <table class="data-table">
+            <thead><tr><th>Rank</th><th>Name</th><th>School</th><th>Meet</th><th>Time</th></tr></thead>
+            <tbody id="swims-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- User management -->
+      <div class="admin-card admin-full">
+        <h3>👥 User Management</h3>
+        <div class="card-desc">Users who have created accounts. Admins can promote or deactivate accounts.</div>
+        <div style="overflow-x:auto">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="user-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <a class="home-link" href="index.html">← Back to home</a>
 </main>
 
@@ -131,7 +314,9 @@ function renderUser(user) {
   `;
   document.getElementById('role-heading').textContent = m.label;
   document.getElementById('role-sub').textContent =
-    `Signed in as ${user.name} (${user.email}). This is the starting point for the ${m.label.toLowerCase()} dashboard.`;
+    user.role === 'admin'
+      ? `Signed in as ${user.name} (${user.email}). Manage ranked-list data and accounts below.`
+      : `Signed in as ${user.name} (${user.email}). This is the starting point for the ${m.label.toLowerCase()} dashboard.`;
 }
 
 window.addEventListener('load', async function() {
@@ -147,10 +332,213 @@ window.addEventListener('load', async function() {
     }
     localStorage.setItem('spi_auth', JSON.stringify(user));
     renderUser(user);
+    if (user.role === 'admin') {
+      document.getElementById('admin-tools').style.display = 'block';
+      loadRankedLists();
+      renderUserTable();
+    }
   } catch (err) {
     window.location.href = 'index.html';
   }
 });
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN — CSV import
+// ═══════════════════════════════════════════════════════════════
+let pendingCSVData = null;
+
+function handleCSVFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const rows = parseCSV(text);
+    if (!rows.length) {
+      document.getElementById('import-result').className = 'import-result error';
+      document.getElementById('import-result').textContent = 'Could not parse CSV. Check format.';
+      document.getElementById('import-result').style.display = 'block';
+      return;
+    }
+    pendingCSVData = rows;
+    const preview = document.getElementById('csv-preview');
+    preview.textContent = rows.slice(0, 8).map(r =>
+      `#${r.rank}  ${r.name.padEnd(28)} ${r.time}s`
+    ).join('\n') + (rows.length > 8 ? `\n... and ${rows.length - 8} more` : '');
+    preview.classList.add('show');
+    document.getElementById('commit-btn').disabled = false;
+    document.getElementById('import-result').style.display = 'none';
+    const dz = document.getElementById('drop-zone');
+    dz.querySelector('.drop-zone-text').innerHTML =
+      `<strong>${file.name}</strong> — ${rows.length} rows loaded`;
+  };
+  reader.readAsText(file);
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const rows  = [];
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    // Handle quoted fields
+    const cols = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || line.split(',');
+    const clean = cols.map(c => c.replace(/^"|"$/g,'').trim());
+    const rankRaw = clean[0];
+    const rank = parseInt(rankRaw);
+    if (isNaN(rank)) continue;
+    // col layout: rank, name, ...(any extra columns)..., time
+    // Time is always the last column so extra descriptive columns
+    // (team, conference, event, etc.) don't shift its position.
+    if (clean.length < 3) continue;
+    const name = clean[1];
+    const time = parseFloat(clean[clean.length - 1]);
+    if (isNaN(time)) continue;
+    rows.push({ rank, name, time });
+  }
+  return rows;
+}
+
+async function commitCSVImport() {
+  if (!pendingCSVData || !pendingCSVData.length) return;
+  const event  = document.getElementById('import-event').value;
+  const gender = document.getElementById('import-gender').value;
+  const conf   = document.getElementById('import-conf').value.trim().toUpperCase();
+  const season = document.getElementById('import-season').value.trim();
+  if (!conf) { alert('Please enter a conference name.'); return; }
+
+  const res = document.getElementById('import-result');
+
+  // Rebuild a plain CSV from parsed rows so we can POST it
+  const csvText = 'rank,name,school,meet,time\n' +
+    pendingCSVData.map(r => `${r.rank},${r.name},,,${r.time}`).join('\n');
+  const file = new File([csvText], 'import.csv', { type: 'text/csv' });
+
+  try {
+    const result = await SPI_API.importCSV(file, conf, event, gender, season);
+    res.className = 'import-result success';
+    res.textContent = `✓ Saved ${result.imported} swims to the database — ${conf} ${gender} ${event} (${season}). Best: ${result.best}`;
+    loadRankedLists();
+  } catch (err) {
+    res.className = 'import-result error';
+    res.textContent = `✗ Import failed: ${err.message}`;
+  }
+
+  res.style.display = 'block';
+  pendingCSVData = null;
+  document.getElementById('commit-btn').disabled = true;
+}
+
+// ── Drag-and-drop on drop zone ─────────────────────────────────
+(function() {
+  const dz = document.getElementById('drop-zone');
+  if (!dz) return;
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleCSVFile(file);
+  });
+})();
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN — database viewer
+// ═══════════════════════════════════════════════════════════════
+async function loadRankedLists() {
+  const wrap = document.getElementById('lists-table-wrap');
+  wrap.innerHTML = '<div style="color:var(--slate);font-size:13px;padding:0.5rem 0">Loading…</div>';
+  try {
+    const data  = await SPI_API.getLists();
+    const lists = data.lists || [];
+    if (!lists.length) {
+      wrap.innerHTML = '<div style="color:var(--slate);font-size:13px;padding:0.5rem 0">No ranked lists imported yet.</div>';
+      return;
+    }
+    wrap.innerHTML = `<table class="data-table"><thead><tr>
+        <th>Conference</th><th>Event</th><th>Gender</th><th>Season</th><th>Swims</th><th></th>
+      </tr></thead><tbody>${lists.map(l => `
+        <tr>
+          <td>${l.conference}</td>
+          <td>${l.event}</td>
+          <td>${l.gender}</td>
+          <td>${l.season}</td>
+          <td>${l.swim_count}</td>
+          <td><button class="btn-small" onclick="viewSwims('${l.list_key}')">View</button></td>
+        </tr>`).join('')}</tbody></table>`;
+  } catch (err) {
+    wrap.innerHTML = `<div style="color:var(--red);font-size:13px">Could not load lists: ${err.message}</div>`;
+  }
+}
+
+async function viewSwims(listKey) {
+  const viewer = document.getElementById('swims-viewer');
+  const title  = document.getElementById('swims-viewer-title');
+  const tbody  = document.getElementById('swims-table-body');
+  viewer.style.display = 'block';
+  title.textContent = listKey.split('|').join(' · ');
+  tbody.innerHTML = '<tr><td colspan="5" style="color:var(--slate);font-size:13px">Loading…</td></tr>';
+  viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  try {
+    const data  = await SPI_API.getListSwims(listKey);
+    const swims = data.swims || [];
+    tbody.innerHTML = swims.map(s => `
+      <tr><td>#${s.rank}</td><td>${s.name}</td><td>${s.school || '—'}</td><td>${s.meet || '—'}</td><td>${s.time}</td></tr>
+    `).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);font-size:13px">Could not load swims: ${err.message}</td></tr>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN — user management
+// ═══════════════════════════════════════════════════════════════
+async function renderUserTable() {
+  const tbody = document.getElementById('user-table-body');
+  tbody.innerHTML = '<tr><td colspan="5" style="color:var(--slate);font-size:13px">Loading...</td></tr>';
+  try {
+    const data  = await SPI_API.getUsers();
+    const users = data.users || [];
+    if (!users.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--slate);font-size:13px">No registered users yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = users.map(u => {
+      const m = ROLE_META[u.role] || { tag: 'role-tag-swimmer', label: u.role };
+      const statusColor = u.status === 'active' ? 'var(--green)' : 'var(--amber)';
+      return `<tr>
+        <td style="font-weight:500">${u.name}</td>
+        <td style="color:var(--slate)">${u.email}</td>
+        <td><span class="role-tag ${m.tag}">${m.label}</span></td>
+        <td style="color:${statusColor};font-size:12px;font-weight:600;text-transform:uppercase">${u.status}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          ${u.status === 'pending'
+            ? `<button class="btn-small success" onclick="approveUser(${u.id})">Approve</button>`
+            : ''}
+          ${u.role !== 'admin'
+            ? `<button class="btn-small" onclick="promoteUser(${u.id})">→ Admin</button>`
+            : ''}
+          <button class="btn-small danger" onclick="removeUser(${u.id})">Remove</button>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);font-size:13px">Could not load users: ${err.message}</td></tr>`;
+  }
+}
+
+async function approveUser(id) {
+  await SPI_API.updateUser(id, { status: 'active' });
+  renderUserTable();
+}
+async function promoteUser(id) {
+  if (!confirm('Promote this user to Admin?')) return;
+  await SPI_API.updateUser(id, { role: 'admin' });
+  renderUserTable();
+}
+async function removeUser(id) {
+  if (!confirm('Remove this user?')) return;
+  await SPI_API.updateUser(id, { status: 'suspended' });
+  renderUserTable();
+}
 </script>
 </body>
 </html>
