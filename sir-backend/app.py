@@ -1,5 +1,5 @@
 """
-SIR — Swimming Impact Rank  |  Flask API
+SPI — Swim Performance Index  |  Flask API
 =========================================
 Endpoints:
   POST /api/auth/signup
@@ -7,7 +7,7 @@ Endpoints:
   GET  /api/auth/me
 
   GET  /api/lists                        — all ranked lists (public)
-  GET  /api/score?time=&conf=&event=&gender=   — fractional SIR score (public)
+  GET  /api/score?time=&conf=&event=&gender=   — fractional SPI score (public)
 
   POST /api/import                       — admin: import CSV ranked list
   GET  /api/import/log                   — admin: import history
@@ -41,7 +41,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://localhost/sir')
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://localhost/spi')
 
 # ── CORS (manual, no extra package needed) ─────────────────────────────────────
 ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', '*')
@@ -155,10 +155,10 @@ def init_db():
         pw = os.environ.get('ADMIN_PASSWORD', 'admin123')
         db.execute(
             "INSERT INTO users(name,email,password,role) VALUES(%s,%s,%s,%s) ON CONFLICT (email) DO NOTHING",
-            ('Admin', os.environ.get('ADMIN_EMAIL', 'admin@sir.app'),
+            ('Admin', os.environ.get('ADMIN_EMAIL', 'admin@spi.app'),
              generate_password_hash(pw), 'admin')
         )
-        print(f"  Seeded admin: {os.environ.get('ADMIN_EMAIL','admin@sir.app')} / {pw}")
+        print(f"  Seeded admin: {os.environ.get('ADMIN_EMAIL','admin@spi.app')} / {pw}")
 
     db.commit()
     db.close()
@@ -230,7 +230,7 @@ def parse_time(raw: str) -> float | None:
     return None
 
 
-# ── Fractional SIR engine ──────────────────────────────────────────────────────
+# ── Fractional SPI engine ──────────────────────────────────────────────────────
 def build_anchors(swims: list[dict]) -> list[dict]:
     """Unique-time anchor points sorted ascending."""
     seen = {}
@@ -248,7 +248,7 @@ def tail_gap(anchors: list[dict], n: int = 5) -> float:
 
 def fractional_score(time: float, swims: list[dict]) -> dict:
     """
-    Calculate fractional SIR score by interpolating between real ranked swims.
+    Calculate fractional SPI score by interpolating between real ranked swims.
     Returns score, rank_label, surrounding swimmers, and pct through gap.
     """
     anchors = build_anchors(swims)
@@ -319,7 +319,7 @@ def signup():
     if role not in ('swimmer', 'coach', 'admin'):
         return jsonify({'error': 'Invalid role'}), 400
     if role == 'admin':
-        valid_code = os.environ.get('ADMIN_INVITE_CODE', 'SIR-ADMIN-2025')
+        valid_code = os.environ.get('ADMIN_INVITE_CODE', 'SPI-ADMIN-2025')
         if code != valid_code:
             return jsonify({'error': 'Invalid admin invite code'}), 403
 
@@ -452,7 +452,7 @@ def benchmarks():
 @app.get('/api/score')
 def score():
     """
-    Calculate fractional SIR score for a given time.
+    Calculate fractional SPI score for a given time.
     Query params: time, conf, event, gender
     Example: /api/score?time=42.49&conf=SEC&event=100free&gender=M
     """
@@ -635,7 +635,7 @@ def health():
 if __name__ == '__main__':
     print("Initializing database...")
     init_db()
-    print(f"Starting SIR API on http://localhost:5000")
+    print(f"Starting SPI API on http://localhost:5000")
     app.run(debug=True, port=5000)
 else:
     # Gunicorn entry point

@@ -1,9 +1,9 @@
-# SIR — Swimming Impact Rank
+# SPI — Swim Performance Index
 
 **How valuable are you where it matters?**
 
 A 43.5 in the 100 free means average in the SEC, good in the ACC, elite in
-the Patriot League. SIR ranks a swimmer's time against the *actual* ranked
+the Patriot League. SPI ranks a swimmer's time against the *actual* ranked
 results of a specific conference/event/gender/season, instead of comparing
 against a single global scale — so the same time can mean something very
 different depending on where you'd swim it.
@@ -73,7 +73,7 @@ sir-backend/
 ```bash
 python3 -m http.server 5500
 ```
-Then edit the `SIR_API_BASE` in `index.html` to point at your local or
+Then edit the `SPI_API_BASE` in `index.html` to point at your local or
 deployed backend.
 
 **Backend** — see [`sir-backend/backend_README.md`](sir-backend/backend_README.md).

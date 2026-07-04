@@ -1,4 +1,4 @@
-# SIR Backend — Setup & Deployment Guide
+# SPI Backend — Setup & Deployment Guide
 
 ## File structure
 ```
@@ -24,9 +24,9 @@ pip install -r requirements.txt
 
 ### 2. Create a local Postgres database
 ```bash
-createdb sir
+createdb spi
 # or via Docker:
-# docker run --name sir-pg -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 -d postgres
+# docker run --name spi-pg -e POSTGRES_HOST_AUTH_METHOD=trust -p 5432:5432 -d postgres
 ```
 
 ### 3. Configure environment
@@ -39,13 +39,13 @@ cp .env.example .env
 ```bash
 python app.py
 # Server starts at http://localhost:5000
-# Admin account auto-created: admin@sir.app / admin123
+# Admin account auto-created: admin@spi.app / admin123
 ```
 
 ### 4. Connect the frontend
 In `index.html`, add before the closing `</body>`:
 ```html
-<script>window.SIR_API_BASE = 'http://localhost:5000';</script>
+<script>window.SPI_API_BASE = 'http://localhost:5000';</script>
 <script src="api.js"></script>
 ```
 
@@ -57,8 +57,8 @@ In `index.html`, add before the closing `</body>`:
 ```bash
 git init
 git add .
-git commit -m "SIR backend"
-git remote add origin https://github.com/YOUR_USERNAME/sir-backend.git
+git commit -m "SPI backend"
+git remote add origin https://github.com/YOUR_USERNAME/spi-backend.git
 git push -u origin main
 ```
 
@@ -82,7 +82,7 @@ git push -u origin main
 ### 4. Update frontend API base URL
 In `index.html`:
 ```html
-<script>window.SIR_API_BASE = 'https://sir-api.onrender.com';</script>
+<script>window.SPI_API_BASE = 'https://sir-api.onrender.com';</script>
 <script src="api.js"></script>
 ```
 

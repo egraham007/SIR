@@ -1,23 +1,23 @@
 /**
- * SIR API Client
+ * SPI API Client
  * ==============
- * Thin wrapper around fetch() for all SIR backend calls.
+ * Thin wrapper around fetch() for all SPI backend calls.
  * Drop this alongside index.html and set API_BASE to your server URL.
  *
  * Usage in index.html:
  *   <script src="api.js"></script>
- *   Then call SIR_API.login(), SIR_API.score(), etc.
+ *   Then call SPI_API.login(), SPI_API.score(), etc.
  */
 
-const SIR_API = (() => {
+const SPI_API = (() => {
 
   // ── Config ─────────────────────────────────────────────────────
   // In production: set to your Render URL e.g. 'https://sir-api.onrender.com'
   // In local dev:  'http://localhost:5000'
-  const API_BASE = window.SIR_API_BASE || 'http://localhost:5000';
+  const API_BASE = window.SPI_API_BASE || 'http://localhost:5000';
 
   // Token stored in localStorage — just the token string, not user data
-  const TOKEN_KEY = 'sir_token';
+  const TOKEN_KEY = 'spi_token';
 
   function getToken()       { return localStorage.getItem(TOKEN_KEY); }
   function setToken(t)      { localStorage.setItem(TOKEN_KEY, t); }
