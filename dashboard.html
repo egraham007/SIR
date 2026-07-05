@@ -374,6 +374,22 @@ function handleCSVFile(file) {
   reader.readAsText(file);
 }
 
+// Parses "1:29.79" (M:SS.xx) or a plain "89.79" into total seconds.
+// Swim times use colon notation for anything a minute or longer, which
+// parseFloat() alone mis-parses (parseFloat("1:29.79") === 1).
+function parseSwimTime(raw) {
+  const s = String(raw).trim().replace(',', '.');
+  const colon = s.match(/^(\d+):(\d{2}(?:\.\d+)?)$/);
+  if (colon) {
+    const mins = parseInt(colon[1], 10);
+    const secs = parseFloat(colon[2]);
+    if (secs >= 60) return NaN;
+    return Math.round((mins * 60 + secs) * 1000) / 1000;
+  }
+  if (/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
+  return NaN;
+}
+
 function splitCSVLine(line) {
   const cols = line.match(/(".*?"|[^,]+)(?=\s*,|\s*$)/g) || line.split(',');
   return cols.map(c => c.replace(/^"|"$/g, '').trim());
@@ -425,7 +441,7 @@ function parseCSV(text) {
       name   = colIndex.name   != null ? clean[colIndex.name]   : '';
       school = colIndex.school != null ? clean[colIndex.school] : '';
       meet   = colIndex.meet   != null ? clean[colIndex.meet]   : '';
-      time   = parseFloat(clean[colIndex.time]);
+      time   = parseSwimTime(clean[colIndex.time]);
     } else {
       // No header — fall back to positional rules: rank, name, [school],
       // [meet], time. Time is always the last column so extra descriptive
@@ -435,7 +451,7 @@ function parseCSV(text) {
       name   = clean[1];
       school = clean.length >= 4 ? clean[2] : '';
       meet   = clean.length >= 5 ? clean[3] : '';
-      time   = parseFloat(clean[clean.length - 1]);
+      time   = parseSwimTime(clean[clean.length - 1]);
     }
 
     if (isNaN(rank) || !name || isNaN(time) || time <= 0) continue;
