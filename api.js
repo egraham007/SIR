@@ -34,7 +34,13 @@ const SPI_API = (() => {
     if (body) opts.body = isForm ? body : JSON.stringify(body);
 
     const res  = await fetch(API_BASE + path, opts);
-    const data = await res.json();
+    const text = await res.text();
+    let data;
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch (_) {
+      throw new Error(`Server returned an unexpected response (HTTP ${res.status}). It may still be deploying — try again in a minute.`);
+    }
     if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
     return data;
   }
