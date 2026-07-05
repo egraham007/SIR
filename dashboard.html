@@ -362,7 +362,7 @@ function handleCSVFile(file) {
     pendingCSVData = rows;
     const preview = document.getElementById('csv-preview');
     preview.textContent = rows.slice(0, 8).map(r =>
-      `#${r.rank}  ${r.name.padEnd(28)} ${(r.school || '').padEnd(20)} ${r.time}s`
+      `#${r.rank}  ${r.name.padEnd(28)} ${(r.school || '').padEnd(20)} ${formatSwimTime(r.time)}`
     ).join('\n') + (rows.length > 8 ? `\n... and ${rows.length - 8} more` : '');
     preview.classList.add('show');
     document.getElementById('commit-btn').disabled = false;
@@ -388,6 +388,18 @@ function parseSwimTime(raw) {
   }
   if (/^\d+(\.\d+)?$/.test(s)) return parseFloat(s);
   return NaN;
+}
+
+// Formats stored seconds back into swim-time notation for display —
+// the inverse of parseSwimTime(). Under a minute shows as "39.91",
+// a minute or longer shows as "1:29.79".
+function formatSwimTime(seconds) {
+  const t = Number(seconds);
+  if (isNaN(t)) return '—';
+  if (t < 60) return t.toFixed(2);
+  const m = Math.floor(t / 60);
+  const s = (t - m * 60).toFixed(2).padStart(5, '0');
+  return `${m}:${s}`;
 }
 
 function splitCSVLine(line) {
@@ -563,7 +575,7 @@ async function viewSwims(listKey) {
     const data  = await SPI_API.getListSwims(listKey);
     const swims = data.swims || [];
     tbody.innerHTML = swims.map(s => `
-      <tr><td>#${s.rank}</td><td>${s.name}</td><td>${s.school || '—'}</td><td>${s.meet || '—'}</td><td>${s.time}</td></tr>
+      <tr><td>#${s.rank}</td><td>${s.name}</td><td>${s.school || '—'}</td><td>${s.meet || '—'}</td><td>${formatSwimTime(s.time)}</td></tr>
     `).join('');
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="5" style="color:var(--red);font-size:13px">Could not load swims: ${err.message}</td></tr>`;
