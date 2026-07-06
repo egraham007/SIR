@@ -1988,7 +1988,7 @@ async function handleSignUp() {
   if (!name || !email || !pass) { showAuthError('Please fill in all fields.'); return; }
   if (pass.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
   try {
-    const user = await SPI_API.signup(name, email, pass, selectedRole, code);
+    const user = await SPI_API.signup(name, email, pass, selectedRole, code, team);
     signInAs(user);
   } catch (err) {
     showAuthError(err.message || 'Could not create account.');

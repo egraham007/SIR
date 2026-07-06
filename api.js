@@ -46,9 +46,9 @@ const SPI_API = (() => {
   }
 
   // ── Auth ───────────────────────────────────────────────────────
-  async function signup(name, email, password, role, inviteCode = '') {
+  async function signup(name, email, password, role, inviteCode = '', team = '', gender = '') {
     const data = await req('POST', '/api/auth/signup',
-      { name, email, password, role, invite_code: inviteCode });
+      { name, email, password, role, invite_code: inviteCode, team, gender });
     setToken(data.token);
     return data.user;
   }
@@ -73,6 +73,29 @@ const SPI_API = (() => {
       clearToken();
       return null;
     }
+  }
+
+  async function updateMe(fields) {
+    return req('PATCH', '/api/me', fields);
+  }
+
+  // ── Swimmer: saved times ────────────────────────────────────────
+  async function getMyTimes() {
+    return req('GET', '/api/me/times');
+  }
+
+  async function saveMyTime(event, time) {
+    return req('PUT', '/api/me/times', { event, time });
+  }
+
+  async function deleteMyTime(event) {
+    return req('DELETE', `/api/me/times/${encodeURIComponent(event)}`);
+  }
+
+  // ── Coach: roster ────────────────────────────────────────────────
+  async function getRoster(team) {
+    const params = new URLSearchParams({ team });
+    return req('GET', `/api/roster?${params}`);
   }
 
   // ── Scoring ────────────────────────────────────────────────────
@@ -123,6 +146,10 @@ const SPI_API = (() => {
     return req('PATCH', `/api/users/${id}`, fields);
   }
 
+  async function getUserTimes(id) {
+    return req('GET', `/api/users/${id}/times`);
+  }
+
   // ── Health check ───────────────────────────────────────────────
   async function health() {
     return req('GET', '/api/health');
@@ -130,10 +157,11 @@ const SPI_API = (() => {
 
   // ── Public API ─────────────────────────────────────────────────
   return {
-    signup, login, logout, me,
+    signup, login, logout, me, updateMe,
     score, getLists, getListSwims, getBenchmarks, deleteList,
+    getMyTimes, saveMyTime, deleteMyTime, getRoster,
     importCSV, importLog,
-    getUsers, updateUser,
+    getUsers, updateUser, getUserTimes,
     health,
     isLoggedIn: () => !!getToken(),
   };

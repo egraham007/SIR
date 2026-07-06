@@ -5,15 +5,24 @@ Endpoints:
   POST /api/auth/signup
   POST /api/auth/login
   GET  /api/auth/me
+  PATCH /api/me                          — self-service: update name/team/gender
 
   GET  /api/lists                        — all ranked lists (public)
+  DELETE /api/lists/<list_key>           — admin: delete a ranked list
+  GET  /api/benchmarks                   — percentile benchmarks (public)
   GET  /api/score?time=&conf=&event=&gender=   — fractional SPI score (public)
+  GET  /api/roster?team=                 — all swims for a school (public)
+
+  GET  /api/me/times                     — swimmer: list own saved times
+  PUT  /api/me/times                     — swimmer: save/update one event time
+  DELETE /api/me/times/<event>           — swimmer: remove a saved time
 
   POST /api/import                       — admin: import CSV ranked list
   GET  /api/import/log                   — admin: import history
 
   GET  /api/users                        — admin: list all users
   PATCH /api/users/<id>                  — admin: update role / status
+  GET  /api/users/<id>/times             — admin: view another user's saved times
 
 Run locally:
     python app.py
@@ -55,7 +64,7 @@ def add_cors(response):
         if origin in ALLOWED_ORIGINS.split(','):
             response.headers['Access-Control-Allow-Origin'] = origin
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
-    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PATCH, DELETE, OPTIONS'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PATCH, PUT, DELETE, OPTIONS'
     return response
 
 @app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
@@ -111,7 +120,21 @@ def init_db():
                     CHECK(role IN ('swimmer','coach','admin')),
         status      TEXT    NOT NULL DEFAULT 'active'
                     CHECK(status IN ('active','suspended','pending')),
+        team        TEXT,
+        gender      TEXT    CHECK(gender IN ('M','F')),
         created_at  TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS team TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS gender TEXT CHECK(gender IN ('M','F'));
+
+    CREATE TABLE IF NOT EXISTS swimmer_times (
+        id          SERIAL PRIMARY KEY,
+        user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        event       TEXT    NOT NULL,
+        time        REAL    NOT NULL,
+        updated_at  TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, event)
     );
 
     CREATE TABLE IF NOT EXISTS sessions (
@@ -303,6 +326,8 @@ def fractional_score(time: float, swims: list[dict]) -> dict:
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
+USER_FIELDS = ('id', 'name', 'email', 'role', 'status', 'team', 'gender', 'created_at')
+
 @app.post('/api/auth/signup')
 def signup():
     data = request.get_json() or {}
@@ -311,6 +336,8 @@ def signup():
     password = data.get('password') or ''
     role     = data.get('role', 'swimmer')
     code     = data.get('invite_code', '')
+    team     = (data.get('team') or '').strip() or None
+    gender   = (data.get('gender') or '').strip().upper() or None
 
     if not name or not email or not password:
         return jsonify({'error': 'Name, email and password required'}), 400
@@ -318,6 +345,8 @@ def signup():
         return jsonify({'error': 'Password must be at least 8 characters'}), 400
     if role not in ('swimmer', 'coach', 'admin'):
         return jsonify({'error': 'Invalid role'}), 400
+    if gender is not None and gender not in ('M', 'F'):
+        return jsonify({'error': 'gender must be M or F'}), 400
     if role == 'admin':
         valid_code = os.environ.get('ADMIN_INVITE_CODE', 'SPI-ADMIN-2025')
         if code != valid_code:
@@ -328,13 +357,13 @@ def signup():
         return jsonify({'error': 'Email already registered'}), 409
 
     cur = db.execute(
-        "INSERT INTO users(name,email,password,role) VALUES(%s,%s,%s,%s) RETURNING id",
-        (name, email, generate_password_hash(password), role)
+        "INSERT INTO users(name,email,password,role,team,gender) VALUES(%s,%s,%s,%s,%s,%s) RETURNING id",
+        (name, email, generate_password_hash(password), role, team, gender)
     )
     new_id = cur.fetchone()['id']
     db.commit()
     token = create_session(new_id)
-    user  = dict(db.execute("SELECT id,name,email,role,status,created_at FROM users WHERE id=%s",
+    user  = dict(db.execute(f"SELECT {','.join(USER_FIELDS)} FROM users WHERE id=%s",
                              (new_id,)).fetchone())
     return jsonify({'token': token, 'user': user}), 201
 
@@ -353,15 +382,45 @@ def login():
         return jsonify({'error': 'Account suspended — contact admin'}), 403
 
     token = create_session(row['id'])
-    user  = {k: row[k] for k in ('id','name','email','role','status','created_at')}
+    user  = {k: row[k] for k in USER_FIELDS}
     return jsonify({'token': token, 'user': user})
 
 
 @app.get('/api/auth/me')
 @require_auth
 def me():
-    return jsonify({'user': {k: g.current_user[k]
-                             for k in ('id','name','email','role','status','created_at')}})
+    return jsonify({'user': {k: g.current_user[k] for k in USER_FIELDS}})
+
+
+@app.patch('/api/me')
+@require_auth
+def update_me():
+    """Self-service profile update: name, team (coach), gender (swimmer)."""
+    data   = request.get_json() or {}
+    fields = {}
+    if 'name' in data:
+        name = (data['name'] or '').strip()
+        if not name:
+            return jsonify({'error': 'Name cannot be blank'}), 400
+        fields['name'] = name
+    if 'team' in data:
+        fields['team'] = (data['team'] or '').strip() or None
+    if 'gender' in data:
+        gender = (data['gender'] or '').strip().upper() or None
+        if gender is not None and gender not in ('M', 'F'):
+            return jsonify({'error': 'gender must be M or F'}), 400
+        fields['gender'] = gender
+    if not fields:
+        return jsonify({'error': 'Nothing to update'}), 400
+
+    db = get_db()
+    set_clause = ', '.join(f"{k}=%s" for k in fields)
+    db.execute(f"UPDATE users SET {set_clause} WHERE id=%s",
+               (*fields.values(), g.current_user['id']))
+    db.commit()
+    user = db.execute(f"SELECT {','.join(USER_FIELDS)} FROM users WHERE id=%s",
+                      (g.current_user['id'],)).fetchone()
+    return jsonify({'user': dict(user)})
 
 
 @app.post('/api/auth/logout')
@@ -373,6 +432,73 @@ def logout():
         get_db().execute("DELETE FROM sessions WHERE token=%s", (token,))
         get_db().commit()
     return jsonify({'ok': True})
+
+
+# ── Swimmer times (self-service) ────────────────────────────────────────────────
+@app.get('/api/me/times')
+@require_auth
+def get_my_times():
+    rows = get_db().execute(
+        "SELECT event,time,updated_at FROM swimmer_times WHERE user_id=%s ORDER BY event",
+        (g.current_user['id'],)
+    ).fetchall()
+    return jsonify({'times': [dict(r) for r in rows]})
+
+
+@app.put('/api/me/times')
+@require_auth
+def save_my_time():
+    data     = request.get_json() or {}
+    event    = (data.get('event') or '').strip().lower()
+    time_raw = str(data.get('time') or '')
+    if not event:
+        return jsonify({'error': 'event is required'}), 400
+    time = parse_time(time_raw)
+    if time is None or time <= 0:
+        return jsonify({'error': f'Cannot parse time: {time_raw}'}), 400
+
+    db = get_db()
+    db.execute("""
+        INSERT INTO swimmer_times(user_id,event,time,updated_at) VALUES(%s,%s,%s,NOW())
+        ON CONFLICT (user_id,event) DO UPDATE SET time=%s, updated_at=NOW()
+    """, (g.current_user['id'], event, time, time))
+    db.commit()
+    return jsonify({'ok': True, 'event': event, 'time': time})
+
+
+@app.delete('/api/me/times/<event>')
+@require_auth
+def delete_my_time(event):
+    db  = get_db()
+    cur = db.execute("DELETE FROM swimmer_times WHERE user_id=%s AND event=%s",
+                      (g.current_user['id'], event))
+    db.commit()
+    if cur.rowcount == 0:
+        return jsonify({'error': 'No saved time for that event'}), 404
+    return jsonify({'ok': True})
+
+
+# ── Roster (coach) ──────────────────────────────────────────────────────────────
+@app.get('/api/roster')
+def get_roster():
+    """
+    All swims across every ranked list for a given school/team name.
+    Query params: team
+    Example: /api/roster?team=Texas
+    """
+    team = (request.args.get('team') or '').strip()
+    if not team:
+        return jsonify({'error': 'team is required'}), 400
+
+    rows = get_db().execute("""
+        SELECT rl.conference, rl.event, rl.gender, rl.season,
+               rs.rank, rs.name, rs.meet, rs.time
+        FROM ranked_swims rs
+        JOIN ranked_lists rl ON rl.list_key = rs.list_key
+        WHERE rs.school ILIKE %s
+        ORDER BY rl.gender, rl.event, rs.time
+    """, (team,)).fetchall()
+    return jsonify({'team': team, 'swims': [dict(r) for r in rows]})
 
 
 # ── Ranked lists (public read) ─────────────────────────────────────────────────
@@ -604,7 +730,7 @@ def import_log():
 @require_admin
 def list_users():
     rows = get_db().execute(
-        "SELECT id,name,email,role,status,created_at FROM users ORDER BY created_at DESC"
+        f"SELECT {','.join(USER_FIELDS)} FROM users ORDER BY created_at DESC"
     ).fetchall()
     return jsonify({'users': [dict(r) for r in rows]})
 
@@ -630,11 +756,22 @@ def update_user(user_id):
     db.execute(f"UPDATE users SET {set_clause} WHERE id=%s",
                (*fields.values(), user_id))
     db.commit()
-    user = db.execute("SELECT id,name,email,role,status FROM users WHERE id=%s",
+    user = db.execute(f"SELECT {','.join(USER_FIELDS)} FROM users WHERE id=%s",
                       (user_id,)).fetchone()
     if not user:
         return jsonify({'error': 'User not found'}), 404
     return jsonify({'user': dict(user)})
+
+
+@app.get('/api/users/<int:user_id>/times')
+@require_admin
+def get_user_times(user_id):
+    """Admin-only: view another user's saved times (used for dashboard previews)."""
+    rows = get_db().execute(
+        "SELECT event,time,updated_at FROM swimmer_times WHERE user_id=%s ORDER BY event",
+        (user_id,)
+    ).fetchall()
+    return jsonify({'times': [dict(r) for r in rows]})
 
 
 # ── Health check ───────────────────────────────────────────────────────────────

@@ -170,6 +170,16 @@ main { padding: 3rem 2rem 4rem; max-width: 1100px; margin: 0 auto; }
 .btn-small.danger  { background: rgba(255,92,92,0.1);  border-color: rgba(255,92,92,0.2);  color: var(--red); }
 .btn-small.success { background: rgba(34,214,122,0.1); border-color: rgba(34,214,122,0.2); color: var(--green); }
 
+.role-section { margin-top: 2.5rem; text-align: left; }
+.time-card { background: var(--steel); border: 1px solid rgba(0,201,255,0.12); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 12px; }
+.time-card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.time-card-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; }
+.breakdown-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(240,244,255,0.06); font-size: 13px; }
+.breakdown-row:last-child { border-bottom: none; }
+.breakdown-label { color: var(--slate); }
+.breakdown-val { font-family: 'Space Grotesk', sans-serif; font-weight: 600; color: var(--cyan); }
+.setup-prompt { background: rgba(0,201,255,0.06); border: 1px solid rgba(0,201,255,0.2); border-radius: var(--radius); padding: 1rem; margin-bottom: 1.25rem; }
+
 @media (max-width: 900px) {
   .admin-grid { grid-template-columns: 1fr; }
   .import-meta { grid-template-columns: 1fr; }
@@ -191,6 +201,61 @@ main { padding: 3rem 2rem 4rem; max-width: 1100px; margin: 0 auto; }
     <div class="role-eyebrow">Dashboard</div>
     <h1 class="role-heading" id="role-heading">—</h1>
     <p class="role-sub" id="role-sub"></p>
+  </div>
+
+  <!-- Swimmer dashboard -->
+  <div class="role-section" id="swimmer-dashboard" style="display:none">
+    <div class="time-card">
+      <h3>🏊 My Times</h3>
+      <div class="card-desc">Save your best times and see your live rank across every conference.</div>
+
+      <div class="setup-prompt" id="swimmer-gender-prompt" style="display:none">
+        <div class="field-row" style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">
+          <div class="field" style="margin:0">
+            <label>Gender</label>
+            <select id="swimmer-gender-select">
+              <option value="">Select…</option>
+              <option value="M">Men</option>
+              <option value="F">Women</option>
+            </select>
+          </div>
+          <button class="calc-btn" style="margin:0;width:auto;padding:9px 20px" onclick="saveSwimmerGender()">Save</button>
+        </div>
+      </div>
+
+      <div class="import-meta" style="grid-template-columns:1fr 1fr">
+        <div class="field" style="margin:0">
+          <label>Event</label>
+          <select id="time-event"></select>
+        </div>
+        <div class="field" style="margin:0">
+          <label>Time</label>
+          <input type="text" id="time-input" placeholder="e.g. 1:29.79 or 22.35" />
+        </div>
+      </div>
+      <button class="calc-btn" onclick="saveSwimmerTime()">Save time</button>
+      <div id="swimmer-times-list" style="margin-top:1.25rem"></div>
+    </div>
+  </div>
+
+  <!-- Coach dashboard -->
+  <div class="role-section" id="coach-dashboard" style="display:none">
+    <div class="time-card">
+      <h3>📋 My Roster</h3>
+      <div class="card-desc">Swims for your program across every imported conference list.</div>
+
+      <div class="setup-prompt" id="coach-team-prompt" style="display:none">
+        <div class="field-row" style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end">
+          <div class="field" style="margin:0">
+            <label>Team / school name</label>
+            <input type="text" id="coach-team-input" placeholder="e.g. Texas" />
+          </div>
+          <button class="calc-btn" style="margin:0;width:auto;padding:9px 20px" onclick="saveCoachTeam()">Save</button>
+        </div>
+      </div>
+
+      <div id="coach-roster-wrap"></div>
+    </div>
   </div>
 
   <!-- Admin-only tools, shown after role is confirmed -->
@@ -284,6 +349,19 @@ main { padding: 3rem 2rem 4rem; max-width: 1100px; margin: 0 auto; }
         </div>
       </div>
 
+      <!-- Dashboard previews -->
+      <div class="admin-card admin-full">
+        <h3>🔍 Dashboard Previews</h3>
+        <div class="card-desc">See the swimmer/coach dashboard exactly as a test account would (read-only).</div>
+        <div style="display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
+          <button class="btn-small" onclick="previewAs('swimmer')">Preview as Test Swimmer</button>
+          <button class="btn-small" onclick="previewAs('coach')">Preview as Test Coach</button>
+          <button class="btn-small danger" id="preview-exit-btn" style="display:none" onclick="exitPreview()">Exit preview</button>
+        </div>
+        <div class="import-result" id="preview-banner"></div>
+        <div id="preview-area"></div>
+      </div>
+
     </div>
   </div>
 
@@ -299,6 +377,15 @@ const ROLE_META = {
   admin:   { label: 'Admin',   tag: 'role-tag-admin' },
 };
 
+const EVENT_LABELS = {
+  '50free': '50 Free', '100free': '100 Free', '200free': '200 Free',
+  '500free': '500 Free', '1000free': '1000 Free', '1650free': '1650 Free',
+  '100back': '100 Back', '200back': '200 Back',
+  '100breast': '100 Breast', '200breast': '200 Breast',
+  '100fly': '100 Fly', '200fly': '200 Fly',
+  '200im': '200 IM', '400im': '400 IM',
+};
+
 async function signOut() {
   await SPI_API.logout();
   localStorage.removeItem('spi_auth');
@@ -312,11 +399,14 @@ function renderUser(user) {
     <span class="role-tag ${m.tag}">${m.label}</span>
     <button class="btn-signout" onclick="signOut()">Sign out</button>
   `;
+  const subLines = {
+    admin:   'Manage ranked-list data and accounts below.',
+    coach:   'Your roster below pulls live from every imported conference list.',
+    swimmer: 'Save your times below to see your live rank across every conference.',
+  };
   document.getElementById('role-heading').textContent = m.label;
   document.getElementById('role-sub').textContent =
-    user.role === 'admin'
-      ? `Signed in as ${user.name} (${user.email}). Manage ranked-list data and accounts below.`
-      : `Signed in as ${user.name} (${user.email}). This is the starting point for the ${m.label.toLowerCase()} dashboard.`;
+    `Signed in as ${user.name} (${user.email}). ${subLines[user.role] || ''}`;
 }
 
 window.addEventListener('load', async function() {
@@ -336,6 +426,10 @@ window.addEventListener('load', async function() {
       document.getElementById('admin-tools').style.display = 'block';
       loadRankedLists();
       renderUserTable();
+    } else if (user.role === 'coach') {
+      initCoachDashboard(user);
+    } else if (user.role === 'swimmer') {
+      initSwimmerDashboard(user);
     }
   } catch (err) {
     window.location.href = 'index.html';
@@ -632,6 +726,193 @@ async function removeUser(id) {
   if (!confirm('Remove this user?')) return;
   await SPI_API.updateUser(id, { status: 'suspended' });
   renderUserTable();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SWIMMER — my times
+// ═══════════════════════════════════════════════════════════════
+function eventOptionsHTML() {
+  return Object.entries(EVENT_LABELS).map(([k, l]) => `<option value="${k}">${l}</option>`).join('');
+}
+
+async function initSwimmerDashboard(user) {
+  document.getElementById('swimmer-dashboard').style.display = 'block';
+  document.getElementById('time-event').innerHTML = eventOptionsHTML();
+  document.getElementById('swimmer-gender-prompt').style.display = user.gender ? 'none' : 'block';
+  await refreshMyTimes();
+}
+
+async function saveSwimmerGender() {
+  const gender = document.getElementById('swimmer-gender-select').value;
+  if (!gender) return;
+  await SPI_API.updateMe({ gender });
+  document.getElementById('swimmer-gender-prompt').style.display = 'none';
+  await refreshMyTimes();
+}
+
+async function saveSwimmerTime() {
+  const event = document.getElementById('time-event').value;
+  const raw   = document.getElementById('time-input').value.trim();
+  if (!raw) return;
+  try {
+    await SPI_API.saveMyTime(event, raw);
+    document.getElementById('time-input').value = '';
+    await refreshMyTimes();
+  } catch (err) {
+    alert(`Could not save time: ${err.message}`);
+  }
+}
+
+async function removeSwimmerTime(event) {
+  await SPI_API.deleteMyTime(event);
+  await refreshMyTimes();
+}
+
+async function refreshMyTimes() {
+  const wrap = document.getElementById('swimmer-times-list');
+  wrap.innerHTML = '<div style="color:var(--slate);font-size:13px">Loading…</div>';
+  try {
+    const user = await SPI_API.me();
+    const data = await SPI_API.getMyTimes();
+    wrap.innerHTML = await renderTimesWithRanks(data.times || [], user.gender, false);
+  } catch (err) {
+    wrap.innerHTML = `<div style="color:var(--red);font-size:13px">${err.message}</div>`;
+  }
+}
+
+// Renders saved times as cards, each showing the live SPI rank in every
+// conference that has a list for that event/gender. readOnly hides the
+// remove button (used for the admin's test-account preview).
+async function renderTimesWithRanks(times, gender, readOnly) {
+  if (!times.length) {
+    return '<div style="color:var(--slate);font-size:13px;padding:0.5rem 0">No saved times yet — add one above.</div>';
+  }
+  if (!gender) {
+    return times.map(t => `
+      <div class="time-card">
+        <div class="time-card-head">
+          <div class="time-card-title">${EVENT_LABELS[t.event] || t.event} — ${formatSwimTime(t.time)}</div>
+          ${readOnly ? '' : `<button class="btn-small danger" onclick="removeSwimmerTime('${t.event}')">Remove</button>`}
+        </div>
+        <div style="color:var(--slate);font-size:12px">Set your gender to see your rank across conferences.</div>
+      </div>`).join('');
+  }
+
+  let lists = [];
+  try { lists = (await SPI_API.getLists()).lists || []; } catch (_) {}
+
+  const blocks = await Promise.all(times.map(async t => {
+    const confs = lists.filter(l => l.gender === gender && l.event === t.event).map(l => l.conference);
+    const rows  = await Promise.all(confs.map(async conf => {
+      try {
+        const r = await SPI_API.score(t.time, conf, t.event, gender);
+        return `<div class="breakdown-row"><span class="breakdown-label">${conf}</span><span class="breakdown-val">${r.rank_label}</span></div>`;
+      } catch (_) { return ''; }
+    }));
+    return `
+      <div class="time-card">
+        <div class="time-card-head">
+          <div class="time-card-title">${EVENT_LABELS[t.event] || t.event} — ${formatSwimTime(t.time)}</div>
+          ${readOnly ? '' : `<button class="btn-small danger" onclick="removeSwimmerTime('${t.event}')">Remove</button>`}
+        </div>
+        ${rows.join('') || '<div style="color:var(--slate);font-size:12px">No ranked lists yet for this event/gender.</div>'}
+      </div>`;
+  }));
+  return blocks.join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COACH — my roster
+// ═══════════════════════════════════════════════════════════════
+async function initCoachDashboard(user) {
+  document.getElementById('coach-dashboard').style.display = 'block';
+  if (!user.team) {
+    document.getElementById('coach-team-prompt').style.display = 'block';
+    document.getElementById('coach-roster-wrap').innerHTML =
+      '<div style="color:var(--slate);font-size:13px">Set your team above to load your roster.</div>';
+  } else {
+    document.getElementById('coach-team-input').value = user.team;
+    await loadCoachRoster(user.team);
+  }
+}
+
+async function saveCoachTeam() {
+  const team = document.getElementById('coach-team-input').value.trim();
+  if (!team) return;
+  await SPI_API.updateMe({ team });
+  document.getElementById('coach-team-prompt').style.display = 'none';
+  await loadCoachRoster(team);
+}
+
+function renderRosterTable(swims) {
+  if (!swims.length) {
+    return '<div style="color:var(--slate);font-size:13px">No swims found for this team yet — times will appear here once an admin imports a list that includes it.</div>';
+  }
+  return `<table class="data-table"><thead><tr>
+      <th>Gender</th><th>Event</th><th>Rank</th><th>Time</th><th>Conference</th><th>Meet</th>
+    </tr></thead><tbody>${swims.map(s => `
+      <tr>
+        <td>${s.gender}</td>
+        <td>${EVENT_LABELS[s.event] || s.event}</td>
+        <td>#${s.rank}</td>
+        <td>${formatSwimTime(s.time)}</td>
+        <td>${s.conference}</td>
+        <td>${s.meet || '—'}</td>
+      </tr>`).join('')}</tbody></table>`;
+}
+
+async function loadCoachRoster(team) {
+  const wrap = document.getElementById('coach-roster-wrap');
+  wrap.innerHTML = '<div style="color:var(--slate);font-size:13px">Loading…</div>';
+  try {
+    const data = await SPI_API.getRoster(team);
+    wrap.innerHTML = renderRosterTable(data.swims || []);
+  } catch (err) {
+    wrap.innerHTML = `<div style="color:var(--red);font-size:13px">Could not load roster: ${err.message}</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADMIN — dashboard previews (read-only, via test accounts)
+// ═══════════════════════════════════════════════════════════════
+async function previewAs(role) {
+  const banner = document.getElementById('preview-banner');
+  const area   = document.getElementById('preview-area');
+  document.getElementById('preview-exit-btn').style.display = 'inline-block';
+  banner.className = 'import-result';
+  banner.style.display = 'none';
+  area.innerHTML = '<div style="color:var(--slate);font-size:13px">Loading preview…</div>';
+  try {
+    const usersData = await SPI_API.getUsers();
+    const testUser = (usersData.users || []).find(u => u.role === role && u.email.startsWith('test.'));
+    if (!testUser) {
+      area.innerHTML = `<div style="color:var(--red);font-size:13px">No test ${role} account found. Create one with an email starting "test." (e.g. test.${role}@spi.app).</div>`;
+      return;
+    }
+    banner.className = 'import-result success';
+    banner.style.display = 'block';
+    banner.textContent = `Previewing as ${testUser.name} (${testUser.email}) — read-only.`;
+
+    if (role === 'swimmer') {
+      const timesData = await SPI_API.getUserTimes(testUser.id);
+      area.innerHTML = await renderTimesWithRanks(timesData.times || [], testUser.gender, true);
+    } else {
+      if (!testUser.team) {
+        area.innerHTML = '<div style="color:var(--slate);font-size:13px">Test coach has no team set yet — sign in as that account and set one.</div>';
+        return;
+      }
+      const rosterData = await SPI_API.getRoster(testUser.team);
+      area.innerHTML = renderRosterTable(rosterData.swims || []);
+    }
+  } catch (err) {
+    area.innerHTML = `<div style="color:var(--red);font-size:13px">${err.message}</div>`;
+  }
+}
+
+function exitPreview() {
+  document.getElementById('preview-banner').style.display = 'none';
+  document.getElementById('preview-area').innerHTML = '';
+  document.getElementById('preview-exit-btn').style.display = 'none';
 }
 </script>
 </body>
